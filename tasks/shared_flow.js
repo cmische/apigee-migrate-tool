@@ -1,5 +1,5 @@
 /*jslint node: true */
-var request = require('request');
+var request = require('request-promise');
 var apigee = require('../config.js');
 var shared_flows;
 module.exports = function(grunt) {
@@ -15,16 +15,16 @@ module.exports = function(grunt) {
 		grunt.verbose.write("Getting shared flows..." + url);
 		url = url + "/v1/organizations/" + org + "/sharedflows";
 
-		request(url, function (error, response, body) {
+		request(url, async function (error, response, body) {
 			if (!error && response.statusCode == 200) {
 			    shared_flows =  JSON.parse(body);
-			   
+
 			    for (var i = 0; i < shared_flows.length; i++) {
 			    	var shared_flow_url = url + "/" + shared_flows[i];
 			    	grunt.file.mkdir(filepath);
 
 			    	//Call shared flow details
-					request(shared_flow_url, function (error, response, body) {
+					await request(shared_flow_url, function (error, response, body) {
 						if (!error && response.statusCode == 200) {
 							grunt.verbose.write(body);
 						    var shared_flow_detail =  JSON.parse(body);
@@ -52,9 +52,9 @@ module.exports = function(grunt) {
 						}
 					}).auth(userid, passwd, true);
 			    	// End shared flow details
-			    }; 
-			    
-			} 
+			    };
+
+			}
 			else
 			{
                 grunt.verbose.write(error);
@@ -65,7 +65,7 @@ module.exports = function(grunt) {
 
 	});
 
-    grunt.registerMultiTask('importSharedFlows', 'Import all shared flows to org ' + 
+    grunt.registerMultiTask('importSharedFlows', 'Import all shared flows to org ' +
         apigee.to.org + " [" + apigee.to.version + "]", function() {
         var url = apigee.to.url;
         var org = apigee.to.org;

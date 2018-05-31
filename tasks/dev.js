@@ -1,5 +1,5 @@
 /*jslint node: true */
-var request = require('request');
+var request = require('request-promise');
 var apigee = require('../config.js');
 var devs;
 module.exports = function(grunt) {
@@ -15,17 +15,17 @@ module.exports = function(grunt) {
 		grunt.verbose.write("getting developers..." + url);
 		url = url + "/v1/organizations/" + org + "/developers";
 
-		request(url, function (error, response, body) {
+		request(url, async function (error, response, body) {
 			if (!error && response.statusCode == 200) {
 			    devs =  JSON.parse(body);
-			   
-			    
+
+
 			    for (var i = 0; i < devs.length; i++) {
 			    	var dev_url = url + "/" + devs[i];
 			    	grunt.file.mkdir(filepath);
 
 			    	//Call developer details
-					request(dev_url, function (error, response, body) {
+					await request(dev_url, function (error, response, body) {
 						if (!error && response.statusCode == 200) {
 							grunt.verbose.write(body);
 						    var dev_detail =  JSON.parse(body);
@@ -45,8 +45,8 @@ module.exports = function(grunt) {
 					}).auth(userid, passwd, true);
 			    	// End Developer details
 			    };
-			    
-			} 
+
+			}
 			else
 			{
 				grunt.log.error(error);
@@ -79,18 +79,18 @@ module.exports = function(grunt) {
 		files.forEach(function(filepath) {
 			console.log(filepath);
 			var content = grunt.file.read(filepath);
-			grunt.verbose.write(url);	
+			grunt.verbose.write(url);
 			request.post({
 			  headers: {'Content-Type' : 'application/json'},
 			  url:     url,
 			  body:    content
 			}, function(error, response, body){
 			var status = 999;
-			if (response)	
+			if (response)
 			 status = response.statusCode;
 			grunt.verbose.writeln('Resp [' + status + '] for dev creation ' + this.url + ' -> ' + body);
 			if (error || status!=201)
-			  	grunt.verbose.error('ERROR Resp [' + status + '] for dev creation ' + this.url + ' -> ' + body); 
+			  	grunt.verbose.error('ERROR Resp [' + status + '] for dev creation ' + this.url + ' -> ' + body);
 			done_count++;
 			if (done_count == files.length)
 			{
@@ -123,15 +123,15 @@ module.exports = function(grunt) {
 			var content = grunt.file.read(filepath);
 			var dev = JSON.parse(content);
 			var del_url = url + dev.email;
-			grunt.verbose.write(del_url);	
+			grunt.verbose.write(del_url);
 			request.del(del_url, function(error, response, body){
 			  var status = 999;
-			  if (response)	
+			  if (response)
 				status = response.statusCode;
 			  grunt.verbose.writeln('Resp [' + status + '] for dev deletion ' + this.del_url + ' -> ' + body);
 			  if (error || status!=200)
-			  { 
-			  	grunt.verbose.error('ERROR Resp [' + status + '] for dev deletion ' + this.del_url + ' -> ' + body); 
+			  {
+			  	grunt.verbose.error('ERROR Resp [' + status + '] for dev deletion ' + this.del_url + ' -> ' + body);
 			  }
 			  done_count++;
 			  if (done_count == files.length)

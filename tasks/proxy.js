@@ -1,5 +1,5 @@
 /*jslint node: true */
-var request = require('request');
+var request = require('request-promise');
 var apigee = require('../config.js');
 var proxies;
 module.exports = function(grunt) {
@@ -17,16 +17,16 @@ module.exports = function(grunt) {
 		grunt.verbose.write("getting proxies..." + url);
 		url = url + "/v1/organizations/" + org + "/apis";
 
-		request(url, function (error, response, body) {
+		request(url, async function (error, response, body) {
 			if (!error && response.statusCode == 200) {
 			    proxies =  JSON.parse(body);
-			   
+
 			    for (var i = 0; i < proxies.length; i++) {
 			    	var proxy_url = url + "/" + proxies[i];
 			    	grunt.file.mkdir(filepath);
 
 			    	//Call proxy details
-					request(proxy_url, function (error, response, body) {
+					await request(proxy_url, function (error, response, body) {
 						if (!error && response.statusCode == 200) {
 							grunt.verbose.write(body);
 						    var proxy_detail =  JSON.parse(body);
@@ -55,8 +55,8 @@ module.exports = function(grunt) {
 						}
 					}).auth(userid, passwd, true);
 			    	// End proxy details
-			    }; 			    
-			} 
+			    };
+			}
 			else
 			{
 				grunt.log.error(error);
@@ -140,14 +140,14 @@ module.exports = function(grunt) {
 			request.del(app_del_url,function(error, response, body){
 			  grunt.verbose.writeln('Resp [' + response.statusCode + '] for proxy deletion ' + this.app_del_url + ' -> ' + body);
 			  if (error || response.statusCode!=200)
-			  	grunt.verbose.error('ERROR Resp [' + response.statusCode + '] for proxy deletion ' + this.app_del_url + ' -> ' + body); 
+			  	grunt.verbose.error('ERROR Resp [' + response.statusCode + '] for proxy deletion ' + this.app_del_url + ' -> ' + body);
 			  done_count++;
 			  	if (done_count == files.length)
 				{
 					grunt.log.ok('Processed ' + done_count + ' proxies');
 					done();
 				}
-			}.bind( {app_del_url: app_del_url}) ).auth(userid, passwd, true);	
+			}.bind( {app_del_url: app_del_url}) ).auth(userid, passwd, true);
 		});
 	});
 
@@ -167,7 +167,7 @@ module.exports = function(grunt) {
 				if (!error && response.statusCode == 200) {
 					//grunt.log.write(body);
 				    proxies =  JSON.parse(body);
-				   
+
 				    for (var i = 0; i < proxies.length; i++) {
 				    	var proxy_url = url + "/environments/" + env + "/apis/" + proxies[i] + "/revisions/1/deployments";
 				    	grunt.verbose.writeln(proxy_url);
@@ -188,9 +188,9 @@ module.exports = function(grunt) {
 							}
 						}).auth(userid, passwd, true);
 				    	// End proxy deploy
-				    }; 
-				    
-				} 
+				    };
+
+				}
 				else
 				{
 					grunt.log.error(error);
@@ -213,7 +213,7 @@ module.exports = function(grunt) {
 				if (!error && response.statusCode == 200) {
 					//grunt.log.write(body);
 				    proxies =  JSON.parse(body);
-				   
+
 				    for (var i = 0; i < proxies.length; i++) {
 				    	var proxy_url = url + "/environments/" + env + "/apis/" + proxies[i] + "/revisions/1/deployments";
 				    	grunt.verbose.writeln(proxy_url);
@@ -234,9 +234,9 @@ module.exports = function(grunt) {
 							}
 						}).auth(userid, passwd, true);
 				    	// End proxy undeploy
-				    }; 
-				    
-				} 
+				    };
+
+				}
 				else
 				{
 					grunt.log.error(error);

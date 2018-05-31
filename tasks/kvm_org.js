@@ -1,5 +1,5 @@
 /*jslint node: true */
-var request = require('request');
+var request = require('request-promise');
 var apigee = require('../config.js');
 var kvms;
 module.exports = function(grunt) {
@@ -14,17 +14,17 @@ module.exports = function(grunt) {
 
 		url = url + "/v1/organizations/" + org + "/keyvaluemaps";
 		grunt.verbose.write("getting Org kvm ..." + url);
-		request(url, function (error, response, body) {
+		request(url, async function (error, response, body) {
 			if (!error && response.statusCode == 200) {
 				//grunt.verbose.write(body);
-			    kvms =  JSON.parse(body);   
-			    
+			    kvms =  JSON.parse(body);
+
 			    for (var i = 0; i < kvms.length; i++) {
 			    	var org_kvm_url = url + "/" + kvms[i];
 			    	grunt.file.mkdir(filepath);
 
 			    	//Call kvm details
-					request(org_kvm_url, function (error, response, body) {
+					await request(org_kvm_url, function (error, response, body) {
 						if (!error && response.statusCode == 200) {
 							grunt.verbose.write(body);
 						    var kvm_detail =  JSON.parse(body);
@@ -44,8 +44,8 @@ module.exports = function(grunt) {
 					}).auth(userid, passwd, true);
 			    	// End kvm details
 			    };
-			    
-			} 
+
+			}
 			else
 			{
 				grunt.log.error(error);
@@ -78,18 +78,18 @@ module.exports = function(grunt) {
 		files.forEach(function(filepath) {
 			console.log(filepath);
 			var content = grunt.file.read(filepath);
-			grunt.verbose.write(url);	
+			grunt.verbose.write(url);
 			request.post({
 			  headers: {'Content-Type' : 'application/json'},
 			  url:     url,
 			  body:    content
 			}, function(error, response, body){
 			var status = 999;
-			if (response)	
+			if (response)
 			 status = response.statusCode;
 			grunt.verbose.writeln('Resp [' + status + '] for org-kvm creation ' + this.url + ' -> ' + body);
 			if (error || status!=201)
-			  	grunt.verbose.error('ERROR Resp [' + status + '] for org-kvm creation ' + this.url + ' -> ' + body); 
+			  	grunt.verbose.error('ERROR Resp [' + status + '] for org-kvm creation ' + this.url + ' -> ' + body);
 			done_count++;
 			if (done_count == files.length)
 			{
@@ -123,15 +123,15 @@ module.exports = function(grunt) {
 			var content = grunt.file.read(filepath);
 			var kvm = JSON.parse(content);
 			var del_url = url + kvm.name;
-			grunt.verbose.write(del_url);	
+			grunt.verbose.write(del_url);
 			request.del(del_url, function(error, response, body){
 			  var status = 999;
-			  if (response)	
+			  if (response)
 				status = response.statusCode;
 			  grunt.verbose.writeln('Resp [' + status + '] for kvm deletion ' + this.del_url + ' -> ' + body);
 			  if (error || status!=200)
-			  { 
-			  	grunt.verbose.error('ERROR Resp [' + status + '] for kvm deletion ' + this.del_url + ' -> ' + body); 
+			  {
+			  	grunt.verbose.error('ERROR Resp [' + status + '] for kvm deletion ' + this.del_url + ' -> ' + body);
 			  }
 			  done_count++;
 			  if (done_count == files.length)

@@ -1,5 +1,5 @@
 /*jslint node: true */
-var request = require('request');
+var request = require('request-promise');
 var apigee = require('../config.js');
 var async = require('async');
 var apps;
@@ -17,13 +17,13 @@ module.exports = function(grunt) {
 		grunt.verbose.write("getting developers..." + url);
 		url = url + "/v1/organizations/" + org + "/developers";
 
-		request(url, function (error, response, body) {
+		request(url, async function (error, response, body) {
 			if (!error && response.statusCode == 200) {
 			    var devs =  JSON.parse(body);
 			    for (var i = 0; i < devs.length; i++) {
 			    	dev_url = url + "/" + devs[i];
 			    	//Call developer details
-					request(dev_url, function (dev_error, dev_response, dev_body) {
+					await request(dev_url, function (dev_error, dev_response, dev_body) {
 						if (!dev_error && dev_response.statusCode == 200) {
 							//grunt.verbose.write(dev_body);
 						    var dev_detail =  JSON.parse(dev_body);
@@ -34,7 +34,7 @@ module.exports = function(grunt) {
 						    grunt.verbose.writeln(apps_url);
 							request(apps_url, function (app_error, app_response, app_body) {
 								if (!app_error && app_response.statusCode == 200) {
-									
+
 								    var apps_detail =  JSON.parse(app_body);
 									grunt.verbose.write(app_body);
 								    var apps = apps_detail.app;
@@ -68,8 +68,8 @@ module.exports = function(grunt) {
 						}
 					}).auth(userid, passwd, true);
 			    	// End Developer details
-			    };  
-			} 
+			    };
+			}
 			else
 			{
 				grunt.log.error(error);
@@ -132,7 +132,7 @@ module.exports = function(grunt) {
 				try{
 				  done_count++;
 				  var cstatus = 999;
-				  if (response)	
+				  if (response)
 				  	  cstatus = response.statusCode;
 				  if (cstatus == 200 || cstatus == 201)
 				  {
@@ -142,15 +142,15 @@ module.exports = function(grunt) {
 				  //grunt.verbose.writeln("deleting key -> " + client_key);
 		      	  var delete_url = app_url + '/' + app.name + '/keys/' + client_key;
 		          //grunt.verbose.writeln("KEY Delete URL -> " + delete_url);
-		          
+
 		          // Delete the key generated when App is created
 		      	  request.del(delete_url,function(error, response, body){
 				    var status = 999;
-				    if (response)	
+				    if (response)
 				  	  status = response.statusCode;
 				  	grunt.verbose.writeln('Resp [' + status + '] for key delete ' + this.delete_url + ' -> ' + body);
 				  	if (error || status!=200 )
-					  	grunt.log.error('ERROR Resp [' + status + '] for key delete ' + this.delete_url + ' -> ' + body); 
+					  	grunt.log.error('ERROR Resp [' + status + '] for key delete ' + this.delete_url + ' -> ' + body);
 					}.bind( {delete_url: delete_url}) ).auth(userid, passwd, true);
 		      	  	// END of Key DELETE
 		      	  }
@@ -171,7 +171,7 @@ module.exports = function(grunt) {
 					done();
 				}
 				callback();
-			}.bind( {app_url: app_url}) ).auth(userid, passwd, true);	
+			}.bind( {app_url: app_url}) ).auth(userid, passwd, true);
 		});
 		var done = this.async();
 	});
@@ -208,18 +208,18 @@ module.exports = function(grunt) {
 			grunt.verbose.writeln(app_del_url);
 			request.del(app_del_url,function(error, response, body){
 			   var status = 999;
-			   if (response)	
+			   if (response)
 			    status = response.statusCode;
 			  grunt.verbose.writeln('Resp [' + status + '] for delete app ' + this.app_del_url + ' -> ' + body);
 			  done_count++;
 			  if (error || status!=200)
-			  	grunt.verbose.error('ERROR Resp [' + status + '] for delete app ' + this.app_del_url + ' -> ' + body); 
+			  	grunt.verbose.error('ERROR Resp [' + status + '] for delete app ' + this.app_del_url + ' -> ' + body);
 			  if (done_count == files.length)
 			  {
 				grunt.log.ok('Processed ' + done_count + ' apps');
 				done();
 			  }
-			}.bind( {app_del_url: app_del_url}) ).auth(userid, passwd, true);	
+			}.bind( {app_del_url: app_del_url}) ).auth(userid, passwd, true);
 		});
 
 	});

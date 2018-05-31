@@ -1,5 +1,5 @@
 /*jslint node: true */
-var request = require('request');
+var request = require('request-promise');
 var apigee = require('../config.js');
 var products;
 module.exports = function(grunt) {
@@ -15,18 +15,18 @@ module.exports = function(grunt) {
 		grunt.verbose.write("getting products..." + url);
 		url = url + "/v1/organizations/" + org + "/apiproducts";
 
-		request(url, function (error, response, body) {
+		request(url, async function (error, response, body) {
 			if (!error && response.statusCode == 200) {
 				//grunt.log.write(body);
 			    products =  JSON.parse(body);
-			   
-			    
+
+
 			    for (var i = 0; i < products.length; i++) {
 			    	var product_url = url + "/" + products[i];
 			    	grunt.file.mkdir(filepath);
 
 			    	//Call product details
-					request(product_url, function (error, response, body) {
+					await request(product_url, function (error, response, body) {
 						if (!error && response.statusCode == 200) {
 							grunt.verbose.write(body);
 						    var product_detail =  JSON.parse(body);
@@ -46,8 +46,8 @@ module.exports = function(grunt) {
 					}).auth(userid, passwd, true);
 			    	// End product details
 			    };
-			    
-			} 
+
+			}
 			else
 			{
 				grunt.log.error(error);
@@ -75,19 +75,19 @@ module.exports = function(grunt) {
 
 		files.forEach(function(filepath) {
 			var content = grunt.file.read(filepath);
-			//grunt.verbose.write(content);	
+			//grunt.verbose.write(content);
 			request.post({
 			  headers: {'content-type' : 'application/json'},
 			  url:     url,
 			  body:    content
 			}, function(error, response, body){
 			  var status = 999;
-			  if (response)	
+			  if (response)
 				status = response.statusCode;
 			  grunt.verbose.writeln('Resp [' + status + '] for product creation ' + this.url + ' -> ' +body);
 			  if (error || status!=201)
-			  { 
-			  	grunt.verbose.error('ERROR Resp [' + status + '] for product creation ' + this.url + ' -> ' +body); 
+			  {
+			  	grunt.verbose.error('ERROR Resp [' + status + '] for product creation ' + this.url + ' -> ' +body);
 			  }
 			 done_count++;
 			if (done_count == files.length)
@@ -120,15 +120,15 @@ module.exports = function(grunt) {
 			var content = grunt.file.read(filepath);
 			var product = JSON.parse(content);
 			var del_url = url + product.name;
-			grunt.verbose.write(del_url);	
+			grunt.verbose.write(del_url);
 			request.del(del_url, function(error, response, body){
 			  var status = 999;
-			  if (response)	
+			  if (response)
 				status = response.statusCode;
 			  grunt.verbose.writeln('Resp [' + status + '] for product deletion ' + this.del_url + ' -> ' + body);
 			  if (error || status!=200)
-			  { 
-			  	grunt.verbose.error('ERROR Resp [' + status + '] for product deletion ' + this.del_url + ' -> ' + body); 
+			  {
+			  	grunt.verbose.error('ERROR Resp [' + status + '] for product deletion ' + this.del_url + ' -> ' + body);
 			  }
 				done_count++;
 				if (done_count == files.length)

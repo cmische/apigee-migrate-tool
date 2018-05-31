@@ -1,19 +1,19 @@
 module.exports = {
 
 	from: {
-		version: '14.01',
-		url: 'https://api.enterprise.apigee.com',
-		userid: 'sbagdadi@apigee.com',
-		passwd: 'shanu999',
-		org: 'shah-nonprod',
-		env: 'prod'
+		version: '4.17.01',
+		url: 'http://localhost:8080',
+    userid: '',
+		passwd: '',
+		org: '',
+		env: ''
 	},
 	to: {
-		version: '15.01',
-		url: 'https://api.enterprise.apigee.com',
-		userid: 'sbagdadi@apigee.com',
-		passwd: 'shanu999',
-		org: 'shah-prod',
-		env: 'vm5'
+		version: '4.17.01',
+		url: 'http://localhost:8080',
+		userid: '',
+		passwd: '',
+		org: '',
+		env: ''
 	}
 } ;

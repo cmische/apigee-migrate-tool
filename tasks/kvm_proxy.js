@@ -16,7 +16,7 @@ module.exports = function(grunt) {
 		var proxies_url = url + "/v1/organizations/" + org + "/apis";
 		grunt.verbose.writeln(proxies_url);
 		grunt.file.mkdir(filepath);
-		request(proxies_url, function (proxy_error, proxy_response, proxy_body) {
+		request(proxies_url, async function (proxy_error, proxy_response, proxy_body) {
 			if (!proxy_error && proxy_response.statusCode == 200) {
 				grunt.verbose.writeln(proxy_body);
 			    var proxies =  JSON.parse(proxy_body);
@@ -25,12 +25,12 @@ module.exports = function(grunt) {
 			    	grunt.verbose.writeln(proxy);
 			    	var proxy_url = url + "/v1/organizations/" + org + "/apis/" + proxy + "/keyvaluemaps";
 			    	grunt.verbose.writeln("Proxy KVM URL: " + proxy_url);
-				    request(proxy_url, function (error, response, body) {
+				    await request(proxy_url, function (error, response, body) {
 						if (!error && response.statusCode == 200) {
 							grunt.verbose.writeln(this.proxy + " : " + body);
-						    kvms =  JSON.parse(body);   						    
+						    kvms =  JSON.parse(body);
 						    for (var i = 0; i < kvms.length; i++) {
-						    	var proxy_kvm_url = this.proxy_url + "/" + kvms[i];	
+						    	var proxy_kvm_url = this.proxy_url + "/" + kvms[i];
 						    	grunt.verbose.writeln("KVM URL : " + proxy_kvm_url);
 						    	var proxy = this.proxy;
 						    	//Call kvm details
@@ -47,8 +47,8 @@ module.exports = function(grunt) {
 									}
 								}.bind( {proxy: proxy})).auth(userid, passwd, true);
 						    	// End kvm details
-						    };					    
-						} 
+						    };
+						}
 						else
 						{
 							grunt.log.error(error);
@@ -109,7 +109,7 @@ module.exports = function(grunt) {
 				try{
 				  done_count++;
 				  var cstatus = 999;
-				  if (response)	
+				  if (response)
 				  	  cstatus = response.statusCode;
 				  if (cstatus == 200 || cstatus == 201)
 				  {
@@ -134,7 +134,7 @@ module.exports = function(grunt) {
 					grunt.log.error(body);
 				}
 
-			}.bind( {kvm_url: kvm_url}) ).auth(userid, passwd, true);	
+			}.bind( {kvm_url: kvm_url}) ).auth(userid, passwd, true);
 		});
 		//var done = this.async();
 	});
@@ -171,18 +171,18 @@ module.exports = function(grunt) {
 			grunt.verbose.writeln(kvm_del_url);
 			request.del(kvm_del_url,function(error, response, body){
 			   var status = 999;
-			   if (response)	
+			   if (response)
 			    status = response.statusCode;
 			  grunt.verbose.writeln('Resp [' + status + '] for delete kvm ' + this.kvm_del_url + ' -> ' + body);
 			  done_count++;
 			  if (error || status!=200)
-			  	grunt.verbose.error('ERROR Resp [' + status + '] for delete kvm ' + this.kvm_del_url + ' -> ' + body); 
+			  	grunt.verbose.error('ERROR Resp [' + status + '] for delete kvm ' + this.kvm_del_url + ' -> ' + body);
 			  if (done_count == files.length)
 			  {
 				grunt.log.ok('Processed ' + done_count + ' kvms');
 				done();
 			  }
-			}.bind( {kvm_del_url: kvm_del_url}) ).auth(userid, passwd, true);	
+			}.bind( {kvm_del_url: kvm_del_url}) ).auth(userid, passwd, true);
 		});
 
 	});
