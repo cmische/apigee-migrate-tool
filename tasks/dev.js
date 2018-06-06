@@ -2,6 +2,11 @@
 var request = require('request-promise');
 var apigee = require('../config.js');
 var devs;
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+};
+
 module.exports = function(grunt) {
 	'use strict';
 	grunt.registerTask('exportDevs', 'Export all developers from org ' + apigee.from.org + " [" + apigee.from.version + "]", function() {
@@ -76,30 +81,33 @@ module.exports = function(grunt) {
 		{
 			files = this.filesSrc;
 		}
+    var iteration = 1
 		files.forEach(function(filepath) {
+      iteration++
 			console.log(filepath);
 			var content = grunt.file.read(filepath);
 			grunt.verbose.write(url);
-			request.post({
-			  headers: {'Content-Type' : 'application/json'},
-			  url:     url,
-			  body:    content
-			}, function(error, response, body){
-			var status = 999;
-			if (response)
-			 status = response.statusCode;
-			grunt.verbose.writeln('Resp [' + status + '] for dev creation ' + this.url + ' -> ' + body);
-			if (error || status!=201)
-			  	grunt.verbose.error('ERROR Resp [' + status + '] for dev creation ' + this.url + ' -> ' + body);
-			done_count++;
-			if (done_count == files.length)
-			{
-				grunt.log.ok('Imported ' + done_count + ' developers');
-				done();
-			}
+      sleep(100 * iteration).then(() => {
+		  	request.post({
+		  	  headers: {'Content-Type' : 'application/json'},
+		  	  url:     url,
+		  	  body:    content
+		  	}, function(error, response, body){
+		  	var status = 999;
+		  	if (response)
+		  	 status = response.statusCode;
+		  	grunt.verbose.writeln('Resp [' + status + '] for dev creation ' + this.url + ' -> ' + body);
+		  	if (error || status!=201)
+		  	  	grunt.verbose.error('ERROR Resp [' + status + '] for dev creation ' + this.url + ' -> ' + body);
+		  	done_count++;
+		  	if (done_count == files.length)
+		  	{
+		  		grunt.log.ok('Imported ' + done_count + ' developers');
+		  		done();
+		  	}
 
-			}.bind( {url: url}) ).auth(userid, passwd, true);
-
+		  	}.bind( {url: url}) ).auth(userid, passwd, true);
+      });
 		});
 	});
 

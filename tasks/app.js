@@ -100,7 +100,7 @@ module.exports = function(grunt) {
 			files = this.filesSrc;
 		}
 
-		async.eachSeries(files, function (filepath,callback) {
+		async.eachSeries(files, async function (filepath,callback) {
 			console.log(filepath);
 			var folders = filepath.split("/");
 			var dev = folders[folders.length - 2];
@@ -124,11 +124,11 @@ module.exports = function(grunt) {
 			var app_url = url + dev + "/apps";
 			grunt.verbose.writeln("Creating App " + app_url);
 
-			request.post({
+			await request.post({
 			  headers: {'Content-Type' : 'application/json'},
 			  url:     app_url,
 			  body:    JSON.stringify(app)
-			}, function(error, response, body){
+			}, async function(error, response, body){
 				try{
 				  done_count++;
 				  var cstatus = 999;
@@ -144,7 +144,7 @@ module.exports = function(grunt) {
 		          //grunt.verbose.writeln("KEY Delete URL -> " + delete_url);
 
 		          // Delete the key generated when App is created
-		      	  request.del(delete_url,function(error, response, body){
+		      	  await request.del(delete_url,function(error, response, body){
 				    var status = 999;
 				    if (response)
 				  	  status = response.statusCode;
