@@ -1,5 +1,5 @@
 /*jslint node: true */
-var request = require('request-promise');
+var request = require('request');
 var apigee = require('../config.js');
 var devs;
 
@@ -127,17 +127,24 @@ module.exports = function(grunt) {
 		}
 		url = url + "/v1/organizations/" + org + "/developers/";
 		var done = this.async();
-		files.forEach(function(filepath) {
-			var content = grunt.file.read(filepath);
-			var dev = JSON.parse(content);
-			var del_url = url + dev.email;
-			grunt.verbose.write(del_url);
+    var iteration = 1;
+    files.forEach(function(filepath) {
+      iteration = iteration + 1;
+      var content = grunt.file.read(filepath);
+      var dev = JSON.parse(content);
+      var del_url = url + dev.email;
+      grunt.verbose.write(del_url);
+      sleep(100 * iteration).then(() => {
 			request.del(del_url, function(error, response, body){
 			  var status = 999;
 			  if (response)
 				status = response.statusCode;
 			  grunt.verbose.writeln('Resp [' + status + '] for dev deletion ' + this.del_url + ' -> ' + body);
-			  if (error || status!=200)
+			  if (status=404)
+			  {
+			  	grunt.verbose.error('Already deleted; ' + this.del_url + ' -> ' + body);
+			  }
+			  else if (error || status!=200)
 			  {
 			  	grunt.verbose.error('ERROR Resp [' + status + '] for dev deletion ' + this.del_url + ' -> ' + body);
 			  }
@@ -148,7 +155,7 @@ module.exports = function(grunt) {
 				done();
 			  }
 			}.bind( {del_url: del_url}) ).auth(userid, passwd, true);
-
+      });
 		});
 	});
 };
