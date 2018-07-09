@@ -3,10 +3,6 @@ var request = require('request');
 var apigee = require('../config.js');
 var async = require('async');
 var apps;
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-};
-//require('request').debug = true
 module.exports = function(grunt) {
 	'use strict';
 
@@ -20,11 +16,19 @@ module.exports = function(grunt) {
 		url = url + "/v1/organizations/" + org + "/developers/";
 		var done = this.async();
 		var opts = {flatten: false};
-		//var f = grunt.option('src');
-		var f = 'data/apps/*/*';
-		files = grunt.file.expand(opts,f);
+		var f = grunt.option('src');
+		if (f)
+		{
+			grunt.verbose.writeln('src pattern = ' + f);
+			files = grunt.file.expand(opts,f);
+		}
+		else
+		{
+			files = this.filesSrc;
+		}
+	
 
-		files.forEach(function(filepath) {
+		async.eachSeries(files, function (filepath,callback) {
 			var folders = filepath.split("/");
 			var dev = folders[folders.length - 2];
 			var app = grunt.file.readJSON(filepath);
@@ -36,96 +40,87 @@ module.exports = function(grunt) {
 				var key_payload = "<CredentialRequest><ConsumerKey>" + cKey + "</ConsumerKey><ConsumerSecret>" + cSecret + "</ConsumerSecret><Attributes></Attributes></CredentialRequest>";
 				grunt.verbose.writeln(key_payload);
 				var products_payload = {};
-        var testKey = "" + cKey + "";
 
 				var prods = [];
-        var stageprods=[
-          "Affiliate Services Protected - Stage",
-          "Affiliate Services - Stage",
-          "Public Services - Manual",
-          "Public Services - Stage",
-          "Public Services - Stage - Reviews",
-          "Internal Services - Reviews",
-          "Internal Services"
-        ]
-        for (var j = 0; j < products.length; j++) {
-               if (stageprods.includes(products[j].apiproduct)) {
-                 grunt.verbose.writeln("\nPushing product " + products[j].apiproduct + " to array.\n");
-                 prods.push(products[j].apiproduct);
-               }
-        };
-
-        grunt.verbose.writeln("\nProds are " + prods + "\n");
+				for (var j = 0; j < products.length; j++) {
+					prods.push(products[j].apiproduct);
+				};
+				 
 				products_payload['apiProducts'] = prods;
-        grunt.verbose.writeln("\npassedckey is; " + cKey + "\n");
 				var create_key_url = url + dev + "/apps/" + app.name + "/keys/";
 
-				request.post({
-				  url:     create_key_url + "create",
-				  headers: {'Content-Type' : 'application/xml'},
-				  body:    key_payload,
-				  auth: {
-    				    user: userid,
-    				    pass: passwd,
-    				    sendImmediately: true
-                                  }
-				}, function(error, response, body){
-				  var status = 999;
-				  if (response)
-				  	status = response.statusCode;
-				  grunt.verbose.writeln('Resp [' + status + '] for ' + dev + ' - ' + create_key_url + ' -> ' + body);
-				  if (error || status!=201)
-				  	grunt.verbose.error('ERROR Resp [' + status + '] for ' + dev + ' - ' + create_key_url + ' -> ' + body);
-				});
+				async.series([
+				    function(callback){
+				    	
+						request.post({
+						  headers: {'Content-Type' : 'application/xml'},
+						  url:     create_key_url + "create",
+						  body:    key_payload
+						}, function(error, response, body){
+						  var status = 999;
+						  if (response)	
+						  	status = response.statusCode;
+						  grunt.verbose.writeln('Resp [' + status + '] for ' + this.dev + ' - ' + this.create_key_url + ' -> ' + body);
+						  if (error || status!=201)
+						  	grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.dev + ' - ' + this.create_key_url + ' -> ' + body); 
+  				          callback(null, 'one');
+						}.bind( {dev:dev, create_key_url: create_key_url}) ).auth(userid, passwd, true);	
 
-				grunt.verbose.writeln("\nckey is; " + cKey + "\n");
-				grunt.verbose.writeln("\ntestkey is; " + testKey + "\n");
-				//urlencode the key
-				var encodedcKey = encodeURI(cKey);
-				grunt.verbose.writeln(create_key_url+ encodedcKey);
-				grunt.verbose.writeln(JSON.stringify(products_payload));
- 				request.post({
-				  url:     create_key_url + encodedcKey,
-				  headers: {'Content-Type' : 'application/json'},
-				  body:    JSON.stringify(products_payload),
-				  auth: {
-    				    user: userid,
-    				    pass: passwd,
-    				    sendImmediately: true
-                                  }
-				}, function(error, response, body){
-				  var status = 999;
-				  if (response)
-				  	status = response.statusCode;
-				  grunt.verbose.writeln('Resp [' + status + '] for ' + dev + ' - ' + app.name + ' - ' + JSON.stringify(products_payload) + ' - ' + cKey + ' product assignment -> ' + body);
-				  if (error || status!=200)
-				  	grunt.verbose.error('ERROR Resp [' + status + '] for ' + dev + ' - ' + app.name + ' - ' + JSON.stringify(products_payload) + ' - ' + cKey + ' product assignment -> ' + body);
+				    },
+				    function(callback){
+				    	//urlencode the key
+						cKey = encodeURI(cKey);
+				        grunt.verbose.writeln(create_key_url+ cKey);
+				        grunt.verbose.writeln(JSON.stringify(products_payload));
+ 						request.post({
+						  headers: {'Content-Type' : 'application/json'},
+						  url:     create_key_url + cKey,
+						  body:    JSON.stringify(products_payload)
+						}, function(error, response, body){
+						  var status = 999;
+						  if (response)	
+						  	status = response.statusCode;
+						  grunt.verbose.writeln('Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.products + ' - ' + this.cKey + ' product assignment -> ' + body);
+						  if (error || status!=200)
+						  	grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.products + ' - ' + this.cKey + ' product assignment -> ' + body); 
+						  callback(null, 'two');
+						}.bind( {dev:dev, cKey: cKey, app_name: app.name, products: JSON.stringify(products_payload)}) ).auth(userid, passwd, true);	
+				        
+				    },
+				    function(callback){
+				    	var done_cnt =0;
+				    	for (var k = 0; k < prods.length; k++) {
+					    	var approve_key_url = create_key_url + cKey + "/apiproducts/" + prods[k] + "?action=approve";
+					        grunt.verbose.writeln("Approve products for key - " + approve_key_url);
+	 						request.post(approve_key_url, function(error, response, body){
+						    var status = 999;
+						    if (response)	
+						  	  status = response.statusCode;
+							grunt.verbose.writeln('Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.product + ' - ' + this.cKey + ' - ' + this.approve_key_url + ' -> ' + body);
+							if (error || status!=204)
+							  	grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.product + ' - ' + this.cKey + ' - ' + this.approve_key_url + ' -> ' + body); 
+							done_cnt++;							 
+							}.bind( {dev:dev, approve_key_url: approve_key_url, cKey: cKey, app_name: app.name, product: prods[k]}) ).auth(userid, passwd, true);	 
+							if (done_cnt == prods.length)
+							  	callback(null, 'three');
+						}      
+				    }
+				],
+				// optional callback
+				function(err, results){
+				    grunt.verbose.writeln("Keys migrated for app " + app.name);
+				    
 				});
-
-				var done_cnt =0;
-				for (var k = 0; k < prods.length; k++) {
-				    	var approve_key_url = create_key_url + cKey + "/apiproducts/" + prods[k] + "?action=approve";
-				        grunt.verbose.writeln("Approve products for key - " + approve_key_url);
-	 				request.post({
-            url: approve_key_url,
-            auth: {
-                user: userid,
-                pass: passwd,
-              sendImmediately: true
-                  }
-            }, function(error, response, body){
-					    var status = 999;
-					    if (response)
-					  	  status = response.statusCode;
-					    grunt.verbose.writeln('Resp [' + status + '] for ' + dev + ' - ' + app.name + ' - ' + JSON.stringify(products_payload) + ' - ' + cKey + ' - ' + approve_key_url + ' -> ' + body);
-					    if (error || status!=204)
-						  grunt.verbose.error('ERROR Resp [' + status + '] for ' + dev + ' - ' + app.name + ' - ' +  JSON.stringify(products_payload) + ' - ' + cKey + ' - ' + approve_key_url + ' -> ' + body);
-					    done_cnt++;
-					});
-				}
-				grunt.verbose.writeln("Keys migrated for app " + app.name);
+                // callback();
+    			if (done_count == credentials.length)
+    			{
+    				grunt.log.ok('Processed ' + done_count + ' keys');
+    				done();
+    			}
+    			callback();			
 			};
 		});
+		var done = this.async();
 	});
 
 	grunt.registerMultiTask('deleteKeys', 'Delete all app keys from org ' + apigee.to.org + " [" + apigee.to.version + "]", function() {
@@ -161,19 +156,19 @@ module.exports = function(grunt) {
 				//urlencode the key
 				cKey = encodeURI(cKey);
 				var delete_key_url = url + dev + "/apps/" + app.name + "/keys/" + cKey;
-				grunt.verbose.writeln(delete_key_url);
+				grunt.verbose.writeln(delete_key_url);    	
 				request.del(delete_key_url , function(error, response, body){
 				  var status = 999;
-				  if (response)
+				  if (response)	
 				  	status = response.statusCode;
 				  grunt.verbose.writeln('Resp [' + status + '] for ' + this.cKey + ' deletion -> ' + body);
 				  if (error || status!=200)
-				  	grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.cKey + ' deletion -> ' + body);
+				  	grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.cKey + ' deletion -> ' + body); 
 				  if (i == credentials.length)
 				  	file_count++;
 				  if ((file_count == files.length) && (i == credentials.length))
 				  	done();
-				}.bind( {cKey: cKey}) ).auth(userid, passwd, true);
+				}.bind( {cKey: cKey}) ).auth(userid, passwd, true);	
 			};
 		});
 	});
