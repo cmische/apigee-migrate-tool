@@ -4,7 +4,11 @@ var apigee = require('../config.js');
 var async = require('async');
 var apps;
 
-//require('request').debug = true
+require('request').debug = false
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};
 
 module.exports = function(grunt) {
     'use strict';
@@ -29,7 +33,86 @@ module.exports = function(grunt) {
             files = this.filesSrc;
         }
 
-        files.forEach(function(filepath) {
+        var prodstoimport = [
+            "Public Services"
+        ]
+
+        function requests(cKey, dev, app_name, products_payload, create_key_url, prods, key_payload) {
+            //BEGIN 1st request consumer key creation
+            request.post({
+                headers: {
+                    'Content-Type': 'application/xml'
+                },
+                url: create_key_url + "create",
+                body: key_payload
+            }, function(error, response, body) {
+                var status = 999;
+                if (response)
+                    status = response.statusCode;
+                grunt.verbose.writeln('Resp [' + status + '] for ' + this.dev + ' - ' + this.create_key_url + ' -> ' + body);
+                if (error || status != 201)
+                    grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.dev + ' - ' + this.create_key_url + ' -> ' + body);
+
+
+                //BEGIN 2cd request product associations
+                cKey = encodeURI(cKey);
+                grunt.verbose.writeln(create_key_url + cKey);
+                grunt.verbose.writeln(JSON.stringify(products_payload));
+                request.post({
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    url: create_key_url + cKey,
+                    body: JSON.stringify(products_payload)
+                }, function(error, response, body) {
+                    var status = 999;
+                    if (response)
+                        status = response.statusCode;
+                    grunt.verbose.writeln('Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.products + ' - ' + this.cKey + ' product assignment -> ' + body);
+                    if (error || status != 200)
+                        grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.products + ' - ' + this.cKey + ' product assignment -> ' + body);
+
+                    //BEGIN 3rd request product association approvals
+                    for (var k = 0; k < prods.length; k++) {
+                        var approve_key_url = create_key_url + cKey + "/apiproducts/" + prods[k] + "?action=approve";
+                        grunt.verbose.writeln("Approve products for key - " + approve_key_url);
+                        request.post(approve_key_url, function(error, response, body) {
+                            var status = 999;
+                            if (response)
+                                status = response.statusCode;
+                            grunt.verbose.writeln('Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.product + ' - ' + this.cKey + ' - ' + this.approve_key_url + ' -> ' + body);
+                            if (error || status != 204)
+                                grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.product + ' - ' + this.cKey + ' - ' + this.approve_key_url + ' -> ' + body);
+                        }.bind({
+                            dev: dev,
+                            approve_key_url: approve_key_url,
+                            cKey: cKey,
+                            app_name: app_name,
+                            product: prods[k]
+                        })).auth(userid, passwd, true);
+                    }
+                    //END 3
+
+
+                }.bind({
+                    dev: dev,
+                    cKey: cKey,
+                    app_name: app_name,
+                    products: JSON.stringify(products_payload)
+                })).auth(userid, passwd, true);
+                //END 2
+
+
+
+            }.bind({
+                dev: dev,
+                create_key_url: create_key_url,
+            })).auth(userid, passwd, true);
+            //END 1
+        }
+
+        files.forEach(function(filepath, index) {
+            sleep(666 * index).then(function(){
             var folders = filepath.split("/");
             var dev = folders[folders.length - 2];
             var app = grunt.file.readJSON(filepath);
@@ -43,9 +126,6 @@ module.exports = function(grunt) {
                 var products_payload = {};
 
                 var prods = [];
-                var prodstoimport = [
-                    "EOS_QA"
-                ]
 
                 for (var j = 0; j < products.length; j++) {
                     if (prodstoimport.includes(products[j].apiproduct)) {
@@ -57,87 +137,11 @@ module.exports = function(grunt) {
                 products_payload['apiProducts'] = prods;
                 var create_key_url = url + dev + "/apps/" + app.name + "/keys/";
 
-                if (prods.length > 0) {
-
-                    // closure
-                    function requests(cKey, dev, app_name, products_payload, create_key_url, prods) {
-                        request.post({
-                            headers: {
-                                'Content-Type': 'application/xml'
-                            },
-                            url: create_key_url + "create",
-                            body: key_payload
-                        }, function(error, response, body) {
-                            var status = 999;
-                            if (response)
-                                status = response.statusCode;
-                            grunt.verbose.writeln('Resp [' + status + '] for ' + this.dev + ' - ' + this.create_key_url + ' -> ' + body);
-                            if (error || status != 201)
-                                grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.dev + ' - ' + this.create_key_url + ' -> ' + body);
-
-
-                            //urlencode the key
-                            cKey = encodeURI(cKey);
-                            grunt.verbose.writeln(create_key_url + cKey);
-                            grunt.verbose.writeln(JSON.stringify(products_payload));
-                            request.post({
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                url: create_key_url + cKey,
-                                body: JSON.stringify(products_payload)
-                            }, function(error, response, body) {
-                                var status = 999;
-                                if (response)
-                                    status = response.statusCode;
-                                grunt.verbose.writeln('Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.products + ' - ' + this.cKey + ' product assignment -> ' + body);
-                                if (error || status != 200)
-                                    grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.products + ' - ' + this.cKey + ' product assignment -> ' + body);
-
-
-                                for (var k = 0; k < prods.length; k++) {
-                                    var approve_key_url = create_key_url + cKey + "/apiproducts/" + prods[k] + "?action=approve";
-                                    grunt.verbose.writeln("Approve products for key - " + approve_key_url);
-                                    request.post(approve_key_url, function(error, response, body) {
-                                        var status = 999;
-                                        if (response)
-                                            status = response.statusCode;
-                                        grunt.verbose.writeln('Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.product + ' - ' + this.cKey + ' - ' + this.approve_key_url + ' -> ' + body);
-                                        if (error || status != 204)
-                                            grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.dev + ' - ' + this.app_name + ' - ' + this.product + ' - ' + this.cKey + ' - ' + this.approve_key_url + ' -> ' + body);
-                                    }.bind({
-                                        dev: dev,
-                                        approve_key_url: approve_key_url,
-                                        cKey: cKey,
-                                        app_name: app_name,
-                                        product: prods[k]
-                                    })).auth(userid, passwd, true);
-                                }
-
-
-                            }.bind({
-                                dev: dev,
-                                cKey: cKey,
-                                app_name: app.name,
-                                products: JSON.stringify(products_payload)
-                            })).auth(userid, passwd, true);
-
-
-
-                        }.bind({
-                            dev: dev,
-                            create_key_url: create_key_url,
-
-
-                        })).auth(userid, passwd, true);
-
-
-                    }
-                    requests(cKey, dev, app.name, products_payload, create_key_url, prods)
-                }
-            };
+                if (prods.length > 0)
+                    requests(cKey, dev, app.name, products_payload, create_key_url, prods, key_payload)
+            }
+            });
         });
-        var done = this.async();
     });
 
     grunt.registerMultiTask('deleteKeys', 'Delete all app keys from org ' + apigee.to.org + " [" + apigee.to.version + "]", function() {
