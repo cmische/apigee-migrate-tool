@@ -34,7 +34,17 @@ module.exports = function(grunt) {
         }
 
         var prodstoimport = [
-            "Public Services"
+          "Affiliate Services",
+          "Affiliate Services Protected - Prod",
+          "Affiliate Services Protected Health Check Only - Prod",
+          "Clicky - Protected",
+          "Game Trade-in - Hydra",
+          "Internal Services",
+          "Internal Services - Reviews",
+          "Public Services",
+          "Public Services - Manual",
+          "Public Services - Reviews",
+          "Public Services for Unapproved Accounts"
         ]
 
         function requests(cKey, dev, app_name, products_payload, create_key_url, prods, key_payload) {
@@ -112,7 +122,7 @@ module.exports = function(grunt) {
         }
 
         files.forEach(function(filepath, index) {
-            sleep(666 * index).then(function(){
+            sleep(400 * index).then(function(){
             var folders = filepath.split("/");
             var dev = folders[folders.length - 2];
             var app = grunt.file.readJSON(filepath);
@@ -166,32 +176,40 @@ module.exports = function(grunt) {
         }
         var done = this.async();
 
-        files.forEach(function(filepath) {
-            var folders = filepath.split("/");
-            var dev = folders[folders.length - 2];
-            var app = grunt.file.readJSON(filepath);
-            var credentials = app.credentials;
-            for (var i = 0; i < credentials.length; i++) {
-                var cKey = credentials[i].consumerKey;
-                //urlencode the key
-                cKey = encodeURI(cKey);
-                var delete_key_url = url + dev + "/apps/" + app.name + "/keys/" + cKey;
-                grunt.verbose.writeln(delete_key_url);
-                request.del(delete_key_url, function(error, response, body) {
-                    var status = 999;
-                    if (response)
-                        status = response.statusCode;
-                    grunt.verbose.writeln('Resp [' + status + '] for ' + this.cKey + ' deletion -> ' + body);
-                    if (error || status != 200)
-                        grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.cKey + ' deletion -> ' + body);
-                    if (i == credentials.length)
-                        file_count++;
-                    if ((file_count == files.length) && (i == credentials.length))
-                        done();
-                }.bind({
-                    cKey: cKey
-                })).auth(userid, passwd, true);
-            };
+        function requests(cKey, delete_key_url, i, credentials) {
+            request.del(delete_key_url, function(error, response, body) {
+                var status = 999;
+                if (response)
+                    status = response.statusCode;
+                grunt.verbose.writeln('Resp [' + status + '] for ' + this.cKey + ' deletion -> ' + body);
+                if (error || status != 200)
+                    grunt.verbose.error('ERROR Resp [' + status + '] for ' + this.cKey + ' deletion -> ' + body);
+                if (i == credentials.length)
+                    file_count++;
+                if ((file_count == files.length) && (i == credentials.length))
+                    done();
+            }.bind({
+                cKey: cKey
+            })).auth(userid, passwd, true);
+        }
+
+
+        files.forEach(function(filepath, index) {
+            sleep(150 * index).then(function() {
+                var folders = filepath.split("/");
+                var dev = folders[folders.length - 2];
+                var app = grunt.file.readJSON(filepath);
+                var credentials = app.credentials;
+                for (var i = 0; i < credentials.length; i++) {
+                    var cKey = credentials[i].consumerKey;
+                    //urlencode the key
+                    cKey = encodeURI(cKey);
+                    var delete_key_url = url + dev + "/apps/" + app.name + "/keys/" + cKey;
+                    grunt.verbose.writeln(delete_key_url);
+                    requests(cKey, delete_key_url, i, credentials)
+
+                };
+            })
         });
     });
 
